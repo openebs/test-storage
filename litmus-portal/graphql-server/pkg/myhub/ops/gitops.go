@@ -235,8 +235,7 @@ func (c MyHubConfig) GitPull() error {
 	if err != nil {
 		return err
 	}
-	var referenceName plumbing.ReferenceName
-	referenceName = plumbing.NewBranchReferenceName(c.Branch)
+	var referenceName plumbing.ReferenceName = plumbing.NewBranchReferenceName(c.Branch)
 	if !c.IsPrivate {
 		err = workTree.Pull(&git.PullOptions{RemoteName: c.RemoteName, ReferenceName: referenceName})
 		if err == git.NoErrAlreadyUpToDate {
@@ -264,8 +263,7 @@ func (c MyHubConfig) gitPullPrivateRepo() error {
 	if err != nil {
 		return err
 	}
-	var referenceName plumbing.ReferenceName
-	referenceName = plumbing.NewBranchReferenceName(c.Branch)
+	var referenceName plumbing.ReferenceName = plumbing.NewBranchReferenceName(c.Branch)
 	auth, err := c.generateAuthMethod()
 	if err != nil {
 		return nil

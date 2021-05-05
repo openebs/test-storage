@@ -22,7 +22,8 @@ func init() {
 
 // InsertCluster takes details of a cluster and inserts into the database collection
 func InsertCluster(cluster Cluster) error {
-	ctx, _ := context.WithTimeout(backgroundContext, 10*time.Second)
+	ctx, cancel := context.WithTimeout(backgroundContext, 10*time.Second)
+	defer cancel()
 	_, err := clusterCollection.InsertOne(ctx, cluster)
 	if err != nil {
 		return err
@@ -33,7 +34,8 @@ func InsertCluster(cluster Cluster) error {
 
 // GetCluster takes a clusterID to retrieve the cluster details from the database
 func GetCluster(clusterID string) (Cluster, error) {
-	ctx, _ := context.WithTimeout(backgroundContext, 10*time.Second)
+	ctx, cancel := context.WithTimeout(backgroundContext, 10*time.Second)
+	defer cancel()
 	query := bson.M{"cluster_id": clusterID}
 
 	var cluster Cluster
@@ -47,7 +49,8 @@ func GetCluster(clusterID string) (Cluster, error) {
 
 // UpdateCluster takes query and update parameters to update the cluster details in the database
 func UpdateCluster(query bson.D, update bson.D) error {
-	ctx, _ := context.WithTimeout(backgroundContext, 10*time.Second)
+	ctx, cancel := context.WithTimeout(backgroundContext, 10*time.Second)
+	defer cancel()
 
 	_, err := clusterCollection.UpdateOne(ctx, query, update)
 	if err != nil {
@@ -67,7 +70,8 @@ func GetClusterWithProjectID(projectID string, clusterType *string) ([]*Cluster,
 		query = bson.M{"project_id": projectID, "cluster_type": clusterType, "is_removed": false}
 	}
 
-	ctx, _ := context.WithTimeout(backgroundContext, 10*time.Second)
+	ctx, cancel := context.WithTimeout(backgroundContext, 10*time.Second)
+	defer cancel()
 	var clusters []*Cluster
 
 	cursor, err := clusterCollection.Find(ctx, query)

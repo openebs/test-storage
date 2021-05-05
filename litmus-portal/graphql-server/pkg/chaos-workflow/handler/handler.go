@@ -23,7 +23,6 @@ import (
 	dbOperationsCluster "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/cluster"
 	dbOperationsProject "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/project"
 	dbOperationsWorkflow "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/workflow"
-	dbSchemaWorkflow "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/workflow"
 	dbOperationsWorkflowTemplate "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/workflowtemplate"
 	dbSchemaWorkflowTemplate "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/workflowtemplate"
 	gitOpsHandler "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/gitops/handler"
@@ -61,6 +60,9 @@ func CreateChaosWorkflow(ctx context.Context, input *model.ChaosWorkFlowInput, r
 func DeleteWorkflow(ctx context.Context, workflow_id string, r *store.StateData) (bool, error) {
 	query := bson.D{{Key: "workflow_id", Value: workflow_id}}
 	workflows, err := dbOperationsWorkflow.GetWorkflows(query)
+	if err != nil {
+		return false, err
+	}
 	if len(workflows) == 0 {
 		return false, errors.New("no such workflow found")
 	}
@@ -117,7 +119,7 @@ func UpdateWorkflow(ctx context.Context, input *model.ChaosWorkFlowInput, r *sto
 
 // GetWorkflowRuns sends all the workflow runs for a project from the DB
 func QueryWorkflowRuns(project_id string) ([]*model.WorkflowRun, error) {
-	workflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{"project_id", project_id}})
+	workflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{Key: "project_id", Value: project_id}})
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +149,7 @@ func QueryWorkflowRuns(project_id string) ([]*model.WorkflowRun, error) {
 }
 
 func QueryWorkflows(project_id string) ([]*model.ScheduledWorkflows, error) {
-	chaosWorkflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{"project_id", project_id}})
+	chaosWorkflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{Key: "project_id", Value: project_id}})
 	if err != nil {
 		return nil, err
 	}
@@ -158,9 +160,12 @@ func QueryWorkflows(project_id string) ([]*model.ScheduledWorkflows, error) {
 		if err != nil {
 			return nil, err
 		}
-		if workflow.IsRemoved == false {
+		if !workflow.IsRemoved {
 			var Weightages []*model.Weightages
-			copier.Copy(&Weightages, &workflow.Weightages)
+			err := copier.Copy(&Weightages, &workflow.Weightages)
+			if err != nil {
+				return nil, err
+			}
 
 			newChaosWorkflows := model.ScheduledWorkflows{
 				WorkflowID:          workflow.WorkflowID,
@@ -186,7 +191,7 @@ func QueryWorkflows(project_id string) ([]*model.ScheduledWorkflows, error) {
 }
 
 func QueryListWorkflow(project_id string) ([]*model.Workflow, error) {
-	chaosWorkflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{"project_id", project_id}})
+	chaosWorkflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{Key: "project_id", Value: project_id}})
 	if err != nil {
 		return nil, err
 	}
@@ -199,11 +204,15 @@ func QueryListWorkflow(project_id string) ([]*model.Workflow, error) {
 			return nil, err
 		}
 		var Weightages []*model.Weightages
-		copier.Copy(&Weightages, &workflow.Weightages)
-
+		err = copier.Copy(&Weightages, &workflow.Weightages)
+		if err != nil {
+			return nil, err
+		}
 		var WorkflowRuns []*model.WorkflowRuns
-		copier.Copy(&WorkflowRuns, &workflow.WorkflowRuns)
-
+		err = copier.Copy(&WorkflowRuns, &workflow.WorkflowRuns)
+		if err != nil {
+			return nil, err
+		}
 		newChaosWorkflows := model.Workflow{
 			WorkflowID:          workflow.WorkflowID,
 			WorkflowManifest:    workflow.WorkflowManifest,
@@ -228,7 +237,7 @@ func QueryListWorkflow(project_id string) ([]*model.Workflow, error) {
 
 func QueryListWorkflowByIDs(workflow_ids []*string) ([]*model.Workflow, error) {
 
-	chaosWorkflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{"workflow_id", bson.M{"$in": workflow_ids}}})
+	chaosWorkflows, err := dbOperationsWorkflow.GetWorkflows(bson.D{{Key: "workflow_id", Value: bson.M{"$in": workflow_ids}}})
 	if err != nil {
 		return nil, err
 	}
@@ -241,11 +250,15 @@ func QueryListWorkflowByIDs(workflow_ids []*string) ([]*model.Workflow, error) {
 		}
 
 		var Weightages []*model.Weightages
-		copier.Copy(&Weightages, &workflow.Weightages)
-
+		err = copier.Copy(&Weightages, &workflow.Weightages)
+		if err != nil {
+			return nil, err
+		}
 		var WorkflowRuns []*model.WorkflowRuns
-		copier.Copy(&WorkflowRuns, &workflow.WorkflowRuns)
-
+		err = copier.Copy(&WorkflowRuns, &workflow.WorkflowRuns)
+		if err != nil {
+			return nil, err
+		}
 		newChaosWorkflows := model.Workflow{
 			WorkflowID:          workflow.WorkflowID,
 			WorkflowManifest:    workflow.WorkflowManifest,
@@ -282,7 +295,7 @@ func WorkFlowRunHandler(input model.WorkflowRunInput, r store.StateData) (string
 	}
 
 	// err = dbOperationsWorkflow.UpdateWorkflowRun(dbOperationsWorkflow.WorkflowRun(newWorkflowRun))
-	count, err := dbOperationsWorkflow.UpdateWorkflowRun(input.WorkflowID, dbSchemaWorkflow.ChaosWorkflowRun{
+	count, err := dbOperationsWorkflow.UpdateWorkflowRun(input.WorkflowID, dbOperationsWorkflow.ChaosWorkflowRun{
 		WorkflowRunID: input.WorkflowRunID,
 		LastUpdated:   strconv.FormatInt(time.Now().Unix(), 10),
 		ExecutionData: input.ExecutionData,
@@ -363,7 +376,7 @@ func GetLogs(reqID string, pod model.PodLogRequest, r store.StateData) {
 
 // ReRunWorkflow sends workflow run request(single run workflow only) to agent on workflow re-run request
 func ReRunWorkflow(workflowID string) (string, error) {
-	query := bson.D{{"workflow_id", workflowID}, {"isRemoved", false}}
+	query := bson.D{{Key: "workflow_id", Value: workflowID}, {Key: "isRemoved", Value: false}}
 	workflows, err := dbOperationsWorkflow.GetWorkflows(query)
 	if err != nil {
 		log.Print("Could not get workflow :", err)
@@ -443,10 +456,10 @@ func SaveWorkflowTemplate(ctx context.Context, templateInput *model.TemplateInpu
 	if err != nil {
 		return nil, err
 	}
-	if IsExist == true {
-		return nil, errors.New("Template already exists")
+	if IsExist {
+		return nil, errors.New("template already exists")
 	}
-	projectData, err := dbOperationsProject.GetProject(ctx, bson.D{{"_id", templateInput.ProjectID}})
+	projectData, err := dbOperationsProject.GetProject(ctx, bson.D{{Key: "_id", Value: templateInput.ProjectID}})
 	if err != nil {
 		return nil, err
 	}
@@ -495,8 +508,8 @@ func QueryTemplateWorkflowByID(ctx context.Context, templateID string) (*model.M
 
 // DeleteWorkflowTemplate is used to delete the workflow template (update the is_removed field as true)
 func DeleteWorkflowTemplate(ctx context.Context, templateID string) (bool, error) {
-	query := bson.D{{"template_id", templateID}}
-	update := bson.D{{"$set", bson.D{{"is_removed", true}}}}
+	query := bson.D{{Key: "template_id", Value: templateID}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "is_removed", Value: true}}}}
 	err := dbOperationsWorkflowTemplate.UpdateTemplateManifest(ctx, query, update)
 	if err != nil {
 		log.Print("Err", err)
